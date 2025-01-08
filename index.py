@@ -1,20 +1,25 @@
 from random import choice
+
 import requests
-from config import *
+
+from motivator.config import *
 
 
 def handler(event, context):
-    '''Основная функция'''
+    """
+    Основная функция, в которой обрабатывается запрос пользователя,
+    и которая определяет по какой ветке сценария необходимо дальше идтию
+    """
     intents = event['request'].get('nlu', {}).get('intents')
     state = event.get('state', {}).get('session', {})
     payload = event.get('request').get('payload', {})
-    
+
     situation = None
     for key in intents.keys():
         if key in intent_situations:
             situation = intent_situations[key]
             break
-    
+
     if event['session']['new']:
         situation = intent_situations['welcome']
 
@@ -28,22 +33,23 @@ def handler(event, context):
 
 
 def fallback(event, state=None):
-    '''
-    Функция с помощью нейросети пишет ответ на сообщение пользователя,
-    если нет заготовленного ответа
-    (и если сообщение пользователя не больше 100 слов, в этом случае)
-    '''
+    """
+    Функция с пишет ответ на сообщение пользователя,
+    если не помогла основная лоогика навыка.
+    Если сообщение до 100 токенов запрашиваем ответ у нейросети,
+    иначе просим уточнить запрос.
+    """
     tokens = event['request'].get('nlu', {}).get('tokens')
     if len(tokens) < 100:
         text = event['request']['original_utterance']
-        answer = request_chat_gpt(text)
+        answer = ai_answer(text)
     else:
         answer = 'Извини, но я тебя не совсем поняла. Для продолжения диалога со мной расскажи как у тебя дела?'
     return make_response(answer, state=state)
 
 
-def request_chat_gpt(text):
-    '''Функция отправляет запрос нейросети и возвращает её ответ'''
+def ai_answer(text):
+    """Функция отправляет запрос нейросети и возвращает её ответ"""
     prompt = {
         "modelUri": "gpt://b1gq8d63dakb7v0surrh/yandexgpt-lite",
         "completionOptions": {
@@ -76,14 +82,14 @@ def request_chat_gpt(text):
 
 
 def button_answer(request, state=None):
-    '''Функция пишет ответ на кнопку, которую нажал пользователь'''
+    """Функция пишет ответ на кнопку, которую нажал пользователь"""
     text = answer_button[request]['text']
     image = answer_button[request]['image']
     return make_response(text, state=state, image=image)
 
 
 def button(title, hide=False):
-    '''Функция создаёт кнопку'''
+    """Функция создаёт описание кнопки"""
     button = {
         'title': title,
         'payload': {
@@ -96,13 +102,13 @@ def button(title, hide=False):
 
 
 def make_response(text, image=None, button_blanks=None, state=None):
-    '''Функция собирает всё что надо отправить пользователю в один json файл'''
+    """Функция формирует ответ пользователю"""
     response = {
         'text': text,
         'tts': text,
         'end_session': False,
     }
-    
+
     if button_blanks is not None:
         buttons = []
         for new_button in button_blanks:
@@ -111,7 +117,7 @@ def make_response(text, image=None, button_blanks=None, state=None):
         if 'screen' not in state:
             state['screen'] = {}
         state['screen']['situation'] = 'button'
-    
+
     if image:
         card = {
             'image_id': image,
@@ -119,7 +125,7 @@ def make_response(text, image=None, button_blanks=None, state=None):
             'description': text
         }
         response['card'] = card
-        
+
     all_response = {
         'response': response,
         'version': '1.0',
@@ -128,3 +134,103 @@ def make_response(text, image=None, button_blanks=None, state=None):
     if state:
         all_response['session_state'] = state
     return all_response
+
+
+event_1 = {
+  "meta": {
+    "locale": "ru-RU",
+    "timezone": "UTC",
+    "client_id": "ru.yandex.searchplugin/7.16 (none none; android 4.4.2)",
+    "interfaces": {
+      "screen": {},
+      "payments": {},
+      "account_linking": {}
+    }
+  },
+  "session": {
+    "message_id": 0,
+    "session_id": "7beafe2f-c7d0-4a8d-8439-09e5c8dbd34e",
+    "skill_id": "afa15a5c-65e7-447b-8935-a5d460c8e248",
+    "user": {
+      "user_id": "8C83541E5498BBD96D0027727FF1DDC456DC3BB31DEA70F1E283D0EAEFC8B15D"
+    },
+    "application": {
+      "application_id": "443172C73D84F601BFAC49E3426A1C9B063C977173B7BC2C4C3765CF1C34C779"
+    },
+    "new": True,
+    "user_id": "443172C73D84F601BFAC49E3426A1C9B063C977173B7BC2C4C3765CF1C34C779"
+  },
+  "request": {
+    "command": "",
+    "original_utterance": "",
+    "nlu": {
+      "tokens": [],
+      "entities": [],
+      "intents": {}
+    },
+    "markup": {
+      "dangerous_context": False
+    },
+    "type": "SimpleUtterance"
+  },
+  "state": {
+    "session": {},
+    "user": {},
+    "application": {}
+  },
+  "version": "1.0"
+}
+event_2 = {
+  "meta": {
+    "locale": "ru-RU",
+    "timezone": "UTC",
+    "client_id": "ru.yandex.searchplugin/7.16 (none none; android 4.4.2)",
+    "interfaces": {
+      "screen": {},
+      "payments": {},
+      "account_linking": {}
+    }
+  },
+  "session": {
+    "message_id": 2,
+    "session_id": "07f93cfc-308d-4ffe-8b09-da3684c84dbe",
+    "skill_id": "afa15a5c-65e7-447b-8935-a5d460c8e248",
+    "user": {
+      "user_id": "8C83541E5498BBD96D0027727FF1DDC456DC3BB31DEA70F1E283D0EAEFC8B15D"
+    },
+    "application": {
+      "application_id": "443172C73D84F601BFAC49E3426A1C9B063C977173B7BC2C4C3765CF1C34C779"
+    },
+    "new": False,
+    "user_id": "443172C73D84F601BFAC49E3426A1C9B063C977173B7BC2C4C3765CF1C34C779"
+  },
+  "request": {
+    "command": "мне грустно",
+    "original_utterance": "мне грустно",
+    "nlu": {
+      "tokens": [
+        "мне",
+        "грустно"
+      ],
+      "entities": [],
+      "intents": {
+        "sad_situation": {
+          "slots": {}
+        }
+      }
+    },
+    "markup": {
+      "dangerous_context": False
+    },
+    "type": "SimpleUtterance"
+  },
+  "state": {
+    "session": {},
+    "user": {},
+    "application": {}
+  },
+  "version": "1.0"
+}
+context = None
+print(handler(event_1, context))
+print(handler(event_2, context))
