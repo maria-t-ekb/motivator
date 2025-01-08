@@ -27,51 +27,63 @@ def handler(event, context):
         return fallback(event, state=state)
 
 
-def fallback(event, state=None):   
+def fallback(event, state=None):
+    '''
+    Функция с помощью нейросети пишет ответ на сообщение пользователя,
+    если нет заготовленного ответа
+    (и если сообщение пользователя не больше 100 слов, в этом случае)
+    '''
     tokens = event['request'].get('nlu', {}).get('tokens')
-    if len(tokens) > 100:
-        text = 'Извини, но я тебя не совсем поняла. Для продолжения диалога со мной расскажи как у тебя дела?'
-        return make_response(text, state=state)
-    else:
+    if len(tokens) < 100:
         text = event['request']['original_utterance']
-        prompt = {
-            "modelUri": "gpt://b1gq8d63dakb7v0surrh/yandexgpt-lite",
-            "completionOptions": {
-                "stream": False,
-                "temperature": 0.6,
-                "maxTokens": "100"
+        answer = request_chat_gpt(text)
+    else:
+        answer = 'Извини, но я тебя не совсем поняла. Для продолжения диалога со мной расскажи как у тебя дела?'
+    return make_response(answer, state=state)
+
+
+def request_chat_gpt(text):
+    '''Функция отправляет запрос нейросети и возвращает её ответ'''
+    prompt = {
+        "modelUri": "gpt://b1gq8d63dakb7v0surrh/yandexgpt-lite",
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.6,
+            "maxTokens": "100"
+        },
+        "messages": [
+            {
+                "role": "system",
+                "text": "Ты мотиватор"
             },
-            "messages": [
-                {
-                    "role": "system",
-                    "text": "Ты мотиватор"
-                },
-                {
-                    "role": "user",
-                    "text": text
-                }
-            ]
-        }
+            {
+                "role": "user",
+                "text": text
+            }
+        ]
+    }
 
-        url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Api-Key AQVNxwy2N83Q7rzZuAA30kbN2-RYIoZECeGZVKc_"
-        }
+    url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Api-Key AQVNxwy2N83Q7rzZuAA30kbN2-RYIoZECeGZVKc_"
+    }
 
-        response = requests.post(url, headers=headers, json=prompt)
-        result = response.json()
-        answer = result['result']['alternatives'][0]['message']['text']
-        return make_response(answer, state=state)
+    response = requests.post(url, headers=headers, json=prompt)
+    result = response.json()
+    answer = result['result']['alternatives'][0]['message']['text']
+    return answer
 
 
 def button_answer(request, state=None):
+    '''Функция пишет ответ на кнопку, которую нажал пользователь'''
     text = answer_button[request]['text']
     image = answer_button[request]['image']
     return make_response(text, state=state, image=image)
 
 
 def button(title, hide=False):
+    '''Функция создаёт кнопку'''
     button = {
         'title': title,
         'payload': {
@@ -84,6 +96,7 @@ def button(title, hide=False):
 
 
 def make_response(text, image=None, button_blanks=None, state=None):
+    '''Функция собирает всё что надо отправить пользователю в один json файл'''
     response = {
         'text': text,
         'tts': text,
